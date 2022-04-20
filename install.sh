@@ -85,6 +85,12 @@ sudo apt update
 catch_errors
 
 sudo apt-get install -y \
+    input-utils \
+    libspnav-dev  \
+    libbluetooth-dev  \
+    libcwiid-dev \
+    jstest-gtk \
+    bash-completion \
     build-essential \
     cmake \
     git \
@@ -191,6 +197,9 @@ python3 -m pip install -U \
 # Source ROS2
 source /opt/ros/galactic/setup.bash
 catch_errors
+
+# Add user to groups for external controller inputs
+sudo adduser $USER plugdev input
 
 if [ ${HW_TYPE} = "amd64" ]; then
     if [ ! -f /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg ]; then
