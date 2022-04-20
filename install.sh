@@ -214,7 +214,8 @@ source /opt/ros/galactic/setup.bash
 catch_errors
 
 # Add user to groups for external controller inputs
-sudo adduser $USER plugdev input
+sudo adduser $USER plugdev
+sudo adduser $USER input
 
 if [ ${HW_TYPE} = "amd64" ]; then
     if [ ! -f /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg ]; then
@@ -268,6 +269,6 @@ fi
 
 source ~/.bashrc
 
-echo '\n----------------------------------------'
+echo '----------------------------------------'
 echo 'DONE! Ready to configure ROS2 workspace!'
 echo '----------------------------------------'
