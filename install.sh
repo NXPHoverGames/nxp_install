@@ -13,18 +13,33 @@ catch_errors () {
     fi
 }
 ###############################################################################
-
+while getopts l:i:s: options; do
+    case "${options}" in
+        l) PASS_LOCALE=${OPTARG};;
+        i) INTERACTIVE_LOCALES=${OPTARG};;
+        s) SSH_SETUP=${OPTARG};;
+    esac
+done
 ###############################################################################
 #Locale checking/set portion for UTF8
-#if SET_LOCALE is assigned, forces system to use that UTF8 locale without asking for entry.
-
+#if SET_LOCALE is assigned, forces system to use that UTF8 locale without asking for entry unless overwritten by PASS_LOCALE.
 SET_LOCALE=""
 COMMON_LOCALES=("af_ZA" "ar_AE" "de_DE" "en_GB" "en_US" "es_MX" "fi_FI" "fr_FR" "he_IL" "hi_IN" "it_IT" "ja_JP" "nl_NL" "pl_PL" "pt_PT" "sv_SE" "zh_CN")
 
+if [ ! -z ${PASS_LOCALE} ]; then
+    if [[ ${COMMON_LOCALES[*]} =~ "${PASS_LOCALE}" ]]; then
+        SET_LOCALE=${PASS_LOCALE}
+    else
+        echo "Passed locale: -l '${PASS_LOCALE}' not in common locale options: ${COMMON_LOCALES[@]}"
+        echo "Please add your desired locale to COMMON_LOCALES and rerun."
+        exit 0
+    fi
+fi
+
 #Checks for default locale file and allows entry if SET_LOCALE not set 
-if [ ! -f /etc/default/locale ] || [[ ! "${LC_ALL}" =~ ".UTF-8" ]] || [[ ! "${LANG}" =~ ".UTF-8" ]]; then
+if [ ! -f /etc/default/locale ] || [[ ! "${LC_ALL}" =~ ".UTF-8" ]] || [[ ! "${LANG}" =~ ".UTF-8" ]] || [ ! -z ${INTERACTIVE_LOCALES} ]; then
     if [ -z ${SET_LOCALE} ]; then
-        echo "System locale not UTF-8 and no SET_LOCALE set in script."
+        echo "No SET_LOCALE set in script."
         echo "Common locale options: ${COMMON_LOCALES[@]}"
         echo "Please type the desired locale and [ENTER]"
         read SET_LOCALE
