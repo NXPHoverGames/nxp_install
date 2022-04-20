@@ -128,11 +128,9 @@ sudo apt-get install -y \
     unzip \
     valgrind \
     xsltproc \
-    ant \
     binutils \
     bc \
     libyaml-cpp-dev \
-    xvfb \
     autoconf \
     automake \
     bison \
@@ -188,8 +186,7 @@ python3 -m pip install -U \
     flake8-quotes \
     pytest-repeat \
     pytest-rerunfailures \
-    pytest \
-    setuptools
+    pytest
 
 # Source ROS2
 source /opt/ros/galactic/setup.bash
@@ -213,14 +210,13 @@ if [ ${HW_TYPE} = "amd64" ]; then
 
     sudo apt-get -y install \
         xterm \
-        openjdk-8-jdk \
-        openjdk-8-jre \
         gstreamer1.0-plugins-bad \
         gstreamer1.0-plugins-base \
         gstreamer1.0-plugins-good \
         gstreamer1.0-plugins-ugly \
         libgstreamer-plugins-base1.0-dev \
         x-window-system \
+        xvfb \
         geographiclib-tools \
         libgeographic-dev \
         ignition-edifice \
