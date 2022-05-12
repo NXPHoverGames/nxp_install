@@ -48,6 +48,7 @@ if [ ! -z ${UPDATE_SCRIPT} ]; then
             exit 0
         else
             echo "Script is already up to date."
+        fi
     else
         echo "Unable to update script at this time, please check that curl and bc are installed and that you have a stable internet connection."
         exit 1
@@ -110,13 +111,13 @@ elif [[ $(lsb_release -cs)  == "jammy" ]]; then
 else
     echo "Ubuntu distribution: $(lsb_release -cs) not supported, script requires focal or jammy, exiting now."
     exit 1
+fi
 
 ###############################################################################
 #Find HW type x86_64 or imx8 only supported in script currently.
 HW_TYPE=$(dpkg --print-architecture)
 
 if [ -f /proc/device-tree/model ]; then
-
     if grep -q MX8 /proc/device-tree/model; then
         echo "System is an IMX8, updating hardware target build parameters"
         HW_TYPE="imx8"
