@@ -41,7 +41,7 @@ done
 if [ ! -z ${UPDATE_SCRIPT} ]; then
     echo "Checking to see if script is up to date."
     if ping -c 1 github.com &> /dev/null && command -v curl &> /dev/null && command -v bc &> /dev/null; then
-        if (( $( echo "$( curl https://raw.githubusercontent.com/rudislabs/nxp_install/main/install.sh | grep -m1 ^INSTALL_VERSION | sed -e 's/INSTALL_VERSION=//g' ) > 0.001" | bc -l ) )); then
+        if (( $( echo "$( curl https://raw.githubusercontent.com/rudislabs/nxp_install/main/install.sh | grep -m1 ^INSTALL_VERSION | sed -e 's/INSTALL_VERSION=//g' ) > $INSTALL_VERSION" | bc -l ) )); then
             echo "Script is out of date and will now update with an overwrite."
             curl https://raw.githubusercontent.com/rudislabs/nxp_install/main/install.sh > "$(readlink -f "${BASH_SOURCE}")"
             echo "Script now updated, please rerun."
