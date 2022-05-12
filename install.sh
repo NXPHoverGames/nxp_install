@@ -1,26 +1,60 @@
 #!/bin/bash
-
-#TODO check version of script
-
+INSTALL_VERSION=0.01
 ###############################################################################
+
 catch_errors () {
     if [[ $? > 0 ]]
     then
         echo "Command failed, please contact Benjamin Perseghetti (benjamin.perseghetti@nxp.com), or Landon Haugh (landon.haugh@nxp.com) for support"
-        exit
+        exit 1
     else
         echo "Command ran successfully. Continuing..."
     fi
 }
 ###############################################################################
-while getopts l:i:s: options; do
+
+apt_wait () {
+  while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
+    sleep 1
+  done
+  while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
+    sleep 1
+  done
+  if [ -f /var/log/unattended-upgrades/unattended-upgrades.log ]; then
+    while sudo fuser /var/log/unattended-upgrades/unattended-upgrades.log >/dev/null 2>&1 ; do
+      sleep 1
+    done
+  fi
+}
+###############################################################################
+
+while getopts l:i:s:u: options; do
     case "${options}" in
         l) PASS_LOCALE=${OPTARG};;
         i) INTERACTIVE_LOCALES=${OPTARG};;
         s) SSH_SETUP=${OPTARG};;
+        u) UPDATE_SCRIPT=${OPTARG};;
     esac
 done
 ###############################################################################
+
+if [ ! -z ${UPDATE_SCRIPT} ]; then
+    echo "Checking to see if script is up to date."
+    if ping -c 1 github.com &> /dev/null && command -v curl &> /dev/null && command -v bc &> /dev/null; then
+        if (( $( echo "$( curl https://raw.githubusercontent.com/rudislabs/nxp_install/main/install.sh | grep -m1 ^INSTALL_VERSION | sed -e 's/INSTALL_VERSION=//g' ) > 0.001" | bc -l ) )); then
+            echo "Script is out of date and will now update with an overwrite."
+            curl https://raw.githubusercontent.com/rudislabs/nxp_install/main/install.sh > "$(readlink -f "${BASH_SOURCE}")"
+            echo "Script now updated, please rerun."
+            exit 0
+        else
+            echo "Script is already up to date."
+    else
+        echo "Unable to update script at this time, please check that curl and bc are installed and that you have a stable internet connection."
+        exit 1
+    fi
+fi
+###############################################################################
+
 #Locale checking/set portion for UTF8
 #if SET_LOCALE is assigned, forces system to use that UTF8 locale without asking for entry unless overwritten by PASS_LOCALE.
 SET_LOCALE=""
@@ -32,7 +66,7 @@ if [ ! -z ${PASS_LOCALE} ]; then
     else
         echo "Passed locale: -l '${PASS_LOCALE}' not in common locale options: ${COMMON_LOCALES[@]}"
         echo "Please add your desired locale to COMMON_LOCALES and rerun."
-        exit 0
+        exit 1
     fi
 fi
 
@@ -69,6 +103,14 @@ elif [ ! $(locale | grep "LC_ALL=${SET_LOCALE}.UTF-8" ) != "" ] || [ ! $(locale 
 fi
 ###############################################################################
 
+if [[ $(lsb_release -cs)  == "focal" ]]; then
+    ROS2_DISTRO=galactic
+elif [[ $(lsb_release -cs)  == "jammy" ]]; then
+    ROS2_DISTRO=humble
+else
+    echo "Ubuntu distribution: $(lsb_release -cs) not supported, script requires focal or jammy, exiting now."
+    exit 1
+
 ###############################################################################
 #Find HW type x86_64 or imx8 only supported in script currently.
 HW_TYPE=$(dpkg --print-architecture)
@@ -81,8 +123,15 @@ if [ -f /proc/device-tree/model ]; then
     fi
 fi
 
+if [ ${HW_TYPE} = "imx8" ]; then
+    if ls /usr/lib/libcurl* 1> /dev/null 2>&1; then 
+        sudo rm -rf /usr/lib/libcurl*
+    fi
+fi
+
 sudo apt-get -y install curl gnupg gnupg2 lsb-release
 catch_errors
+apt_wait
 
 if [ ! -f /usr/share/keyrings/ros-archive-keyring.gpg ]; then
     # Add ROS2 apt key
@@ -180,17 +229,20 @@ sudo apt-get install -y \
     libeigen3-dev \
     protobuf-compiler \
     libimage-exiftool-perl \
-    ros-galactic-desktop \
-    ros-galactic-cv-bridge \
-    ros-galactic-image-tools \
-    ros-galactic-image-transport \
-    ros-galactic-image-transport-plugins \
-    ros-galactic-image-pipeline \
-    ros-galactic-camera-calibration-parsers \
-    ros-galactic-camera-info-manager \
-    ros-galactic-launch-testing-ament-cmake \
-    ros-galactic-vision-opencv \
-    ros-galactic-*msg*
+    ros-$ROS2_DISTRO-desktop \
+    ros-$ROS2_DISTRO-cv-bridge \
+    ros-$ROS2_DISTRO-image-tools \
+    ros-$ROS2_DISTRO-image-transport \
+    ros-$ROS2_DISTRO-image-transport-plugins \
+    ros-$ROS2_DISTRO-image-pipeline \
+    ros-$ROS2_DISTRO-camera-calibration-parsers \
+    ros-$ROS2_DISTRO-camera-info-manager \
+    ros-$ROS2_DISTRO-launch-testing-ament-cmake \
+    ros-$ROS2_DISTRO-vision-opencv \
+    ros-$ROS2_DISTRO-navigation2 \
+    ros-$ROS2_DISTRO-*msg*
+catch_errors
+apt_wait
 
 # Install Python 3 pip build dependencies first.
 python3 -m pip install --upgrade pip wheel setuptools
@@ -210,12 +262,23 @@ python3 -m pip install -U \
     pytest
 
 # Source ROS2
-source /opt/ros/galactic/setup.bash
+source /opt/ros/$ROS2_DISTRO/setup.bash
 catch_errors
 
 # Add user to groups for external controller inputs
 sudo adduser $USER plugdev
 sudo adduser $USER input
+
+if [ ${HW_TYPE} = "imx8" ]; then
+    sudo apt-get -y install \
+        v4l-utils \
+        v4l2loopback-utils \
+        gstreamer1.0-nice \
+        gstreamer1.0-opencv
+    catch_errors
+    apt_wait
+fi
+
 
 if [ ${HW_TYPE} = "amd64" ]; then
     if [ ! -f /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg ]; then
@@ -245,22 +308,21 @@ if [ ${HW_TYPE} = "amd64" ]; then
         geographiclib-tools \
         libgeographic-dev \
         ignition-edifice \
-        ros-galactic-ros-ign
-
+        ros-$ROS2_DISTRO-ros-ign
     catch_errors
+    apt_wait
 
     # Install geographiclib geoids for ??
     sudo geographiclib-get-geoids egm96-5
     catch_errors
-
-    # Not sure why this is here. Gonna just leave it be
-    sudo apt-get -y autoremove
-    catch_errors
 fi
 
+sudo apt-get -y autoremove
+catch_errors
+
 # Check to see if things are already sourced... this script may fail and then be run again by the user.
-if ! grep -q "source /opt/ros/galactic/setup.bash" "/home/$USER/.bashrc"; then
-    echo 'source /opt/ros/galactic/setup.bash' >> ~/.bashrc
+if ! grep -q "source /opt/ros/$ROS2_DISTRO/setup.bash" "/home/$USER/.bashrc"; then
+    echo 'source /opt/ros/$ROS2_DISTRO/setup.bash' >> ~/.bashrc
 fi
 
 if ! grep -q "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" "/home/$USER/.bashrc"; then
@@ -272,3 +334,4 @@ source ~/.bashrc
 echo '----------------------------------------'
 echo 'DONE! Ready to configure ROS2 workspace!'
 echo '----------------------------------------'
+exit 0
