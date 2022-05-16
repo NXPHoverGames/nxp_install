@@ -1,5 +1,5 @@
 #!/bin/bash
-INSTALL_VERSION=0.01
+INSTALL_VERSION=0.011
 ###############################################################################
 
 catch_errors () {
@@ -325,7 +325,7 @@ catch_errors
 
 # Check to see if things are already sourced... this script may fail and then be run again by the user.
 if ! grep -q "source /opt/ros/$ROS2_DISTRO/setup.bash" "/home/$USER/.bashrc"; then
-    echo 'source /opt/ros/$ROS2_DISTRO/setup.bash' >> ~/.bashrc
+    echo "source /opt/ros/$ROS2_DISTRO/setup.bash" >> ~/.bashrc
 fi
 
 if ! grep -q "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" "/home/$USER/.bashrc"; then
