@@ -1,5 +1,5 @@
 #!/bin/bash
-INSTALL_VERSION=0.011
+INSTALL_VERSION=0.012
 ###############################################################################
 
 catch_errors () {
@@ -106,8 +106,10 @@ fi
 
 if [[ $(lsb_release -cs)  == "focal" ]]; then
     ROS2_DISTRO=galactic
+    IGN_VERSION=edifice
 elif [[ $(lsb_release -cs)  == "jammy" ]]; then
     ROS2_DISTRO=humble
+    IGN_VERSION=fortress
 else
     echo "Ubuntu distribution: $(lsb_release -cs) not supported, script requires focal or jammy, exiting now."
     exit 1
@@ -237,15 +239,23 @@ sudo apt-get install -y \
     ros-$ROS2_DISTRO-image-tools \
     ros-$ROS2_DISTRO-image-transport \
     ros-$ROS2_DISTRO-image-transport-plugins \
-    ros-$ROS2_DISTRO-image-pipeline \
+    ros-$ROS2_DISTRO-*msg* \
     ros-$ROS2_DISTRO-camera-calibration-parsers \
     ros-$ROS2_DISTRO-camera-info-manager \
     ros-$ROS2_DISTRO-launch-testing-ament-cmake \
     ros-$ROS2_DISTRO-vision-opencv \
-    ros-$ROS2_DISTRO-navigation2 \
-    ros-$ROS2_DISTRO-*msg*
+    ros-$ROS2_DISTRO-image-pipeline
+    
 catch_errors
 apt_wait
+
+if [ ${ROS2_DISTRO} = "galactic" ]; then
+    sudo apt-get -y install \
+        ros-$ROS2_DISTRO-navigation2
+        
+    catch_errors
+    apt_wait
+fi
 
 # Install Python 3 pip build dependencies first.
 python3 -m pip install --upgrade pip wheel setuptools
@@ -310,11 +320,18 @@ if [ ${HW_TYPE} = "amd64" ]; then
         xvfb \
         geographiclib-tools \
         libgeographic-dev \
-        ignition-edifice \
-        ros-$ROS2_DISTRO-ros-ign
+        ignition-$IGN_VERSION
+
     catch_errors
     apt_wait
 
+    if [ ${ROS2_DISTRO} = "humble" ]; then
+        sudo apt-get -y install \
+            ros-$ROS2_DISTRO-desktop-full
+
+        catch_errors
+        apt_wait
+    fi
     # Install geographiclib geoids for ??
     sudo geographiclib-get-geoids egm96-5
     catch_errors
